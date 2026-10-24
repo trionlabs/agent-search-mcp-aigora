@@ -1,0 +1,137 @@
+name: release
+# A v* tag on main publishes that version through npm trusted publishing (OIDC) with provenance, after the
+# npm-publish environment's approval. A tag for an already published version (v0.1.0, published from the owner's
+# machine) only reads the registry back against the committed evidence.
+on:
+  push:
+    tags: ['v*']
+permissions: {}
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    permissions: {}
+    outputs:
+      published: ${{ steps.registry.outputs.published }}
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+      - id: registry
+        name: Is this version already published?
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          # Any registry error fails the job; only "not in versions" means unpublished. npm prints a lone version bare.
+          vs="$(npm view @aigora/mcp versions --json)" || { echo "registry read failed"; exit 1; }
+          # Parse and validate in a command that must succeed; only then output the boolean.
+          published="$(node -e 'const v=[].concat(JSON.parse(process.argv[1]));
+            if(!v.length||!v.every(x=>typeof x==="string"))process.exit(2);console.log(v.includes(process.argv[2]))' "$vs" "$V")" \
+            || { echo "registry response invalid"; exit 1; }
+          echo "published=$published" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: check
+    if: needs.check.outputs.published == 'false'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+      - name: Tag is on main and matches package.json
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run verify:release
+      - name: Pack the exact tarball to publish
+        run: |
+          mkdir out
+          npm pack --json --pack-destination out > pack.json
+          node -e 'const [p]=require("./pack.json"),e=require(process.argv[1]);if(p.integrity!==e.integrity||p.filename!==e.filename)throw Error("pack != evidence")' "./release/${GITHUB_REF_NAME#v}.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release
+          path: out/
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [check, verify]
+    if: needs.check.outputs.published == 'false'
+    runs-on: ubuntu-24.04
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          registry-url: https://registry.npmjs.org
+      - name: npm supports trusted publishing
+        run: node -e 'const [a,b,c]=process.argv[1].split(".").map(Number);if(a<11||(a===11&&(b<5||(b===5&&c<1))))throw Error("npm "+process.argv[1]+" < 11.5.1")' "$(npm -v)"
+      # The committed evidence, read independently of the artifact: only release/ at the tag commit, as data.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          path: committed
+          persist-credentials: false
+          sparse-checkout: /release/
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release
+          path: out
+      - name: Artifact equals the committed evidence
+        run: |
+          echo "EVIDENCE=$GITHUB_WORKSPACE/committed/release/${GITHUB_REF_NAME#v}.json" >> "$GITHUB_ENV"
+          node -e '
+            const fs=require("fs"),c=require("crypto"),e=require(process.argv[1]);
+            const files=fs.readdirSync("out");
+            if(files.length!==1||files[0]!==e.filename)throw Error("artifact files "+files);
+            const b=fs.readFileSync("out/"+e.filename);
+            if("sha512-"+c.createHash("sha512").update(b).digest("base64")!==e.integrity)throw Error("integrity");
+            if(c.createHash("sha256").update(b).digest("hex")!==e.sha256)throw Error("sha256");' \
+            "$GITHUB_WORKSPACE/committed/release/${GITHUB_REF_NAME#v}.json"
+      # --provenance makes a publish from a private repository fail instead of shipping without provenance.
+      - name: Publish (OIDC, provenance)
+        working-directory: out
+        run: npm publish "./$(node -p 'require(process.env.EVIDENCE).filename')" --access public --provenance
+      - name: Readback
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          for i in 1 2 3 4 5 6; do
+            got="$(npm view "@aigora/mcp@$V" dist.integrity 2>/dev/null)" && [ -n "$got" ] && break
+            sleep 10
+          done
+          test "$got" = "$(node -p 'require(process.env.EVIDENCE).integrity')"
+          npm view "@aigora/mcp@$V" dist.attestations.provenance.predicateType | grep -q 'slsa.dev/provenance'
+
+  readback:
+    needs: check
+    if: needs.check.outputs.published == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          sparse-checkout: /release/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+      - name: Registry integrity equals the committed evidence
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          test "$(npm view "@aigora/mcp@$V" dist.integrity)" = "$(node -p "require('./release/$V.json').integrity")"
