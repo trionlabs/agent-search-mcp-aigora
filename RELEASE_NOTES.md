@@ -1,4 +1,25 @@
-# @aigora/mcp 0.1.0 — release candidate notes
+# @aigora/mcp 0.1.1 — release candidate notes
+
+Patch release:
+
+- a clean shutdown (the editor closes stdin) no longer prints `[aigora-mcp] http: request failed`. Closing aborts
+  the bridge's own server-event stream, and that abort is no longer reported as a failure. Errors while the session
+  is open are still reported, with the same fixed messages.
+
+The default MCP URL, tools and configuration are unchanged from 0.1.0. `release/0.1.1.json` qualifies this Node 24
+tarball as `release/0.1.0.json` did for 0.1.0.
+
+0.1.1 is the first version published only through `.github/workflows/release.yml`, with npm trusted publishing and
+provenance. Owner steps:
+
+1. Configure the `npm-publish` environment (the owner as required reviewer, `v*` tags only) and the npm trusted
+   publisher for `release.yml` with that environment. npm expects a new trusted-publisher configuration to publish
+   within two days.
+2. Merge the release commit to `main`, then push the tag `v0.1.1` on it.
+3. Approve the `npm-publish` deployment. The workflow checks that the packed tarball equals `release/0.1.1.json`
+   before it publishes, then reads the registry back against it.
+
+# @aigora/mcp 0.1.0 — release notes
 
 Initial public bridge release:
 
