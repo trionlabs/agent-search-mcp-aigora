@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { startFixtureServer } from './fixtures/mcpServer.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -75,5 +76,11 @@ describe('stdio ⇄ streamable-http round-trip against a local MCP server', () =
     rpc(bridge, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'find_agent', arguments: { query: 'x' } } });
     const call = await replyFor(bridge, 3);
     expect(call).toMatchObject({ id: 3, result: { content: [{ type: 'text', text: 'fixture:x' }] } });
+
+    // The editor hangs up: the bridge exits 0, and stderr holds only its startup line, no error from its own shutdown.
+    bridge.stdin.end();
+    const [code] = await once(bridge, 'close'); // after stderr is drained
+    expect(code).toBe(0);
+    expect(bridgeErr.join('').trim().split('\n')).toEqual([`[aigora-mcp] bridging stdio ⇄ ${fixture.url}`]);
   }, 30_000);
 });

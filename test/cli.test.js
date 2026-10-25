@@ -316,6 +316,23 @@ describe('startBridge (fake transports)', () => {
     expect(code).toBe(0);
   });
 
+  // The SDK HTTP transport aborts its open SSE stream on close and reports that abort through onerror.
+  it('reports remote errors while open, but not the abort its own shutdown causes', async () => {
+    for (const shutdown of ['stdin EOF', 'close()']) {
+      const local = fakeTransport();
+      const remote = fakeTransport();
+      remote.close = vi.fn(async () => { remote.onerror?.(new Error('SSE stream disconnected: AbortError')); remote.onclose?.(); });
+      /** @type {string[]} */ const errors = [];
+      const b = await startBridge({ url: 'http://x/mcp', env: {}, makeLocal: () => local, makeRemote: () => remote,
+        onError: (where) => errors.push(where) });
+      remote.onerror(new Error('SSE stream disconnected: socket hang up'));
+      expect(errors).toEqual(['http']);
+      if (shutdown === 'stdin EOF') await local.close(); else await b.close();
+      expect(remote.close).toHaveBeenCalled();
+      expect(errors, shutdown).toEqual(['http']);
+    }
+  });
+
   // Codex security pass P2: the key never reaches stderr or an MCP error reply, and never travels in cleartext off-host.
   it('refuses a key a header cannot carry with a fixed message that does not echo it', async () => {
     const run = startBridge({ url: 'https://x/mcp', env: { AIGORA_API_KEY: 'aigora_mcp_live_abc\nxyz' },

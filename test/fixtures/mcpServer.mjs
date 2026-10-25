@@ -16,6 +16,8 @@ export async function startFixtureServer(port = 0) {
       res.writeHead(404).end();
       return;
     }
+    // As the live service does, the client's standalone SSE GET stays pending (no headers) until the client hangs up.
+    if (req.method === 'GET') return;
     // Stateless streamable HTTP: one server and transport per request, as the SDK's stateless example does.
     const server = new McpServer({ name: 'aigora-mcp-fixture', version: '0.0.0' });
     server.registerTool('find_agent', { description: 'Fixture agent search', inputSchema: { query: z.string() } },
