@@ -10,13 +10,16 @@ The default MCP URL, tools and configuration are unchanged from 0.1.0. `release/
 tarball as `release/0.1.0.json` did for 0.1.0.
 
 0.1.1 is the first version published only through `.github/workflows/release.yml`, with npm trusted publishing and
-provenance. Owner steps:
+provenance. npm trusted publishing runs only on GitHub-hosted runners. Owner steps:
 
-1. Configure the `npm-publish` environment (the owner as required reviewer, `v*` tags only) and the npm trusted
+1. Confirm that GitHub Actions runs for this repository: the organization's billing must allow GitHub-hosted jobs. On
+   the release commit, `ci` must pass on ubuntu-24.04, including `npm run verify:release`. That proves the Linux
+   tarball equals `release/0.1.1.json`. Do not configure trust before this.
+2. Configure the `npm-publish` environment (the owner as required reviewer, `v*` tags only) and the npm trusted
    publisher for `release.yml` with that environment. npm expects a new trusted-publisher configuration to publish
    within two days.
-2. Merge the release commit to `main`, then push the tag `v0.1.1` on it.
-3. Approve the `npm-publish` deployment. The workflow checks that the packed tarball equals `release/0.1.1.json`
+3. Merge the release commit to `main`, then push the tag `v0.1.1` on it.
+4. Approve the `npm-publish` deployment. The workflow checks that the packed tarball equals `release/0.1.1.json`
    before it publishes, then reads the registry back against it.
 
 # @aigora/mcp 0.1.0 — release notes

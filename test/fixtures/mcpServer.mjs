@@ -5,8 +5,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
 
-/** Start the fixture on 127.0.0.1 (port 0 picks a free one). Resolves with its /mcp URL and a close(). */
+/** Start the fixture on 127.0.0.1 (port 0 picks a free one). Resolves with its /mcp URL, a close() and getArrived, which
+ * resolves once a client's standalone SSE GET is pending. */
 export async function startFixtureServer(port = 0) {
+  /** @type {() => void} */ let markGet = () => {};
+  const getArrived = new Promise((resolve) => { markGet = () => resolve(undefined); });
   const http = createServer(async (req, res) => {
     if (req.url === '/health') {
       res.writeHead(200, { 'content-type': 'application/json' }).end('{"ok":true}');
@@ -17,7 +20,10 @@ export async function startFixtureServer(port = 0) {
       return;
     }
     // As the live service does, the client's standalone SSE GET stays pending (no headers) until the client hangs up.
-    if (req.method === 'GET') return;
+    if (req.method === 'GET') {
+      markGet();
+      return;
+    }
     // Stateless streamable HTTP: one server and transport per request, as the SDK's stateless example does.
     const server = new McpServer({ name: 'aigora-mcp-fixture', version: '0.0.0' });
     server.registerTool('find_agent', { description: 'Fixture agent search', inputSchema: { query: z.string() } },
@@ -31,6 +37,8 @@ export async function startFixtureServer(port = 0) {
   const address = /** @type {import('node:net').AddressInfo} */ (http.address());
   return {
     url: `http://127.0.0.1:${address.port}/mcp`,
-    close: () => new Promise((resolve) => http.close(() => resolve(undefined))),
+    getArrived,
+    // A held GET would keep close() waiting, so open connections are ended first.
+    close: () => new Promise((resolve) => { http.close(() => resolve(undefined)); http.closeAllConnections(); }),
   };
 }

@@ -18,3 +18,5 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # The tarball packed here, as release.yml packs it, must equal the committed release evidence.
+      - run: npm run verify:release
