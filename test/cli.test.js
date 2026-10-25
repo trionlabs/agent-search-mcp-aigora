@@ -12,7 +12,7 @@ import { CLIENTS, initSnippet } from '../src/initSnippet.js';
 import { installClientConfig, initTarget, restrictToOwnerOnWindows } from '../src/initConfig.js';
 import { DEFAULT_MCP_URL, resolveUrl, startBridge } from '../src/bridge.js';
 
-// M6-17A (#142) — the pure CLI layer: arg parsing, init snippets, URL resolution, and the bridge pipe
+// The pure CLI layer: arg parsing, init snippets, URL resolution, and the bridge pipe
 // with injected fake transports (the real stdio/http round-trip lives in roundtrip.test.js).
 
 describe('parseArgs', () => {
@@ -79,7 +79,7 @@ describe('execute', () => {
     expect(err.mock.calls[0][0]).toMatch(/http:\/\/x\/mcp/);
   });
 
-  // Codex security pass P2: the startup line names the server without credentials, query or fragment.
+  // The startup line names the server without credentials, query or fragment.
   it('run logs the server URL without userinfo, query or fragment', async () => {
     const bridge = vi.fn(async () => ({ close: async () => {}, closed: Promise.resolve() }));
     const err = vi.fn();
@@ -90,7 +90,7 @@ describe('execute', () => {
 });
 
 describe('installClientConfig', () => {
-  // Codex security round 2 P2: Windows ignores 0600, so the still-empty temp file is restricted to the owner first.
+  // Windows ignores 0600, so the still-empty temp file is restricted to the owner first.
   it('on Windows restricts the empty temp file to its owner before writing, and fails closed', async () => {
     const home = await mkdtemp(join(tmpdir(), 'aigora-mcp-'));
     /** @type {Array<{path: string, size: number}>} */ const calls = [];
@@ -104,7 +104,7 @@ describe('installClientConfig', () => {
     expect((await readdir(join(home, '.cursor'))).filter((name) => name.includes('aigora-tmp'))).toEqual([]);
   });
 
-  // Codex security round 3 P2: icacls runs from the Windows system directory by absolute path, never through search.
+  // icacls.exe runs from the Windows system directory by absolute path, never through search.
   it('runs the system icacls.exe by absolute path and fails closed without SystemRoot or USERNAME', async () => {
     const exec = vi.fn(async () => ({ stdout: '', stderr: '' }));
     await restrictToOwnerOnWindows('C:\\u\\cfg.tmp', { USERNAME: 'ann', USERDOMAIN: 'PC', SystemRoot: 'C:\\Windows' }, exec);
@@ -119,7 +119,7 @@ describe('installClientConfig', () => {
     await expect(restrictToOwnerOnWindows('x', { SystemRoot: 'C:\\Windows' }, exec)).rejects.toThrow('USERNAME');
   });
 
-  // Codex security pass P2: a file or symlink planted at the old predictable temp name is never written through.
+  // A file or symlink planted at the old predictable temp name is never written through.
   it('never writes through a pre-planted temp path in a shared config directory', async () => {
     const home = await mkdtemp(join(tmpdir(), 'aigora-mcp-'));
     const path = join(home, '.cursor', 'mcp.json');
@@ -215,7 +215,7 @@ describe('installClientConfig', () => {
       .toContain('C:\\Users\\aigora\\AppData\\Roaming/Claude/claude_desktop_config.json');
   });
 
-  // Codex pre-publish P1: re-running init for Cursor/Claude Desktop must not delete a key or URL override the user added.
+  // Re-running init for Cursor/Claude Desktop must not delete a key or URL override the user added.
   it.each(['cursor', 'claude-desktop'])('re-running %s init keeps the user aigora.env and refuses malformed entries', async (client) => {
     const home = await mkdtemp(join(tmpdir(), 'aigora-mcp-'));
     const opts = { env: { HOME: home }, platform: /** @type {NodeJS.Platform} */ ('linux') };
@@ -294,7 +294,7 @@ describe('startBridge (fake transports)', () => {
     expect(remote.closed).toBe(true);
   });
 
-  // Codex pre-publish P2: an HTTP failure (revoked key, quota, outage) still answers the request instead of leaving it pending.
+  // An HTTP failure (revoked key, quota, outage) still answers the request instead of leaving it pending.
   it('answers a request the remote rejects with a JSON-RPC error; a failed notification is only logged', async () => {
     const local = fakeTransport();
     const remote = fakeTransport();
@@ -307,7 +307,7 @@ describe('startBridge (fake transports)', () => {
     expect(local.sent).toEqual([{ jsonrpc: '2.0', id: 7, error: { code: -32603, message: expect.stringContaining('HTTP 401') } }]);
   });
 
-  // Codex pre-publish P2: the SDK stdio transport ignores stdin EOF, so `run` never settled and Node exited 13.
+  // The SDK stdio transport ignores stdin EOF, so `run` never settled and Node exited 13.
   it('the bundled CLI exits 0 when the editor closes stdin', async () => {
     const bin = fileURLToPath(new URL('../bin/mcp.js', import.meta.url));
     const child = spawn(process.execPath, [bin, 'run', '--url', 'http://127.0.0.1:9/mcp'], { stdio: ['pipe', 'ignore', 'ignore'] });
@@ -333,7 +333,7 @@ describe('startBridge (fake transports)', () => {
     }
   });
 
-  // Codex security pass P2: the key never reaches stderr or an MCP error reply, and never travels in cleartext off-host.
+  // The key never reaches stderr or an MCP error reply, and never travels in cleartext off-host.
   it('refuses a key a header cannot carry with a fixed message that does not echo it', async () => {
     const run = startBridge({ url: 'https://x/mcp', env: { AIGORA_API_KEY: 'aigora_mcp_live_abc\nxyz' },
       makeLocal: fakeTransport, makeRemote: fakeTransport });
@@ -364,7 +364,7 @@ describe('startBridge (fake transports)', () => {
     logged.mockRestore();
   });
 
-  // Codex security round 2 P2: URL credentials never reach an error message, stderr or a reply.
+  // URL credentials never reach an error message, stderr or a reply.
   it('refuses a malformed or credential-bearing URL with a fixed message that echoes nothing', async () => {
     for (const url of ['https://u:secretpw@[bad/mcp?token=t0k', 'https://u:secretpw@x.example/mcp', 'file:///etc/secretpw']) {
       const run = startBridge({ url, env: {}, makeLocal: fakeTransport, makeRemote: fakeTransport });
@@ -397,7 +397,7 @@ describe('startBridge (fake transports)', () => {
     expect(stderr).not.toMatch(/secretpw|t0k/);
   });
 
-  // Codex security round 3 P2: upstream error text is never relayed, so a reflected query value or short key cannot leak.
+  // Upstream error text is never relayed, so a reflected query value or short key cannot leak.
   it('answers a failed request with a fixed message and status only, never upstream text', async () => {
     const local = fakeTransport();
     const remote = fakeTransport();

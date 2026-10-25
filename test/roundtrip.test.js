@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { startFixtureServer } from './fixtures/mcpServer.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-// M6-17B (#142): the clean-env round-trip. A local fixture MCP server (test/fixtures/mcpServer.mjs) stands in for
+// The clean-env round-trip. A local fixture MCP server (test/fixtures/mcpServer.mjs) stands in for
 // Aigora's service; the REAL bin/mcp.js bridge runs as a child process and a stdio MCP session goes through it.
 // The live service's tool contract is checked in the Aigora monorepo against the published package.
 
