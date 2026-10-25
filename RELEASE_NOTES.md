@@ -10,12 +10,12 @@ The default MCP URL, tools and configuration are unchanged from 0.1.0. `release/
 tarball as `release/0.1.0.json` did for 0.1.0.
 
 0.1.1 is the first version published only through `.github/workflows/release.yml`, with npm trusted publishing and
-provenance. This GitHub Actions release needs GitHub-hosted runners: npm trusted publishing does not support
-self-hosted runners. Owner steps:
+provenance. CI and the release checks run on Blacksmith runners; the publish job alone runs on a GitHub-hosted
+runner, because npm trusted publishing does not support self-hosted runners. Owner steps:
 
-1. Confirm that GitHub Actions runs for this repository: the organization's billing must allow GitHub-hosted jobs. On
-   the release commit, `ci` must pass on ubuntu-24.04, including `npm run verify:release`. That proves the Linux
-   tarball equals `release/0.1.1.json`. Do not configure trust before this.
+1. On the release commit, `ci` must pass, including `npm run verify:release`; that proves the Linux tarball equals
+   `release/0.1.1.json`. The organization's billing must also allow GitHub-hosted jobs, which the publish job needs.
+   Do not configure trust before both hold.
 2. Configure the `npm-publish` environment (the owner as required reviewer, `v*` tags only) and the npm trusted
    publisher for `release.yml` with that environment. npm expects a new trusted-publisher configuration to publish
    within two days.
