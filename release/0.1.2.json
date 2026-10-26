@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "status": "local-release-candidate",
+  "package": "@aigora/mcp@0.1.2",
+  "filename": "aigora-mcp-0.1.2.tgz",
+  "sha256": "34099627002ed3d925f546c68e0b7079df965b7764be25825fbbe27260231b97",
+  "integrity": "sha512-wvBSpJtW2zlpDO6hZr0RX/8sXJt2uNfzwuhVFVP9oI5ARYDvoXoxyYd/rKnjZF/oQWjHMGF2Sc8nhTB5FMG8Qg==",
+  "packed_bytes": 56765,
+  "unpacked_bytes": 190034,
+  "runtime_dependencies": 0,
+  "default_mcp_url": "https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp",
+  "registry_preflight": {
+    "checked_on": "2026-10-26",
+    "result": "404_not_published"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "RELEASE_NOTES.md",
+    "bin/mcp.js",
+    "dist/THIRD_PARTY_LICENSES.txt",
+    "dist/cli.js",
+    "docs/index.md",
+    "package.json",
+    "skills/aigora-mcp.md"
+  ]
+}

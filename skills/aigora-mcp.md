@@ -1,14 +1,11 @@
 ---
 name: Aigora MCP
-description: Celo agent registry + bounty creation via MCP
+description: Pointer to the maintained Aigora MCP skill in github.com/trionlabs/aigora-skills (skills/aigora-mcp). Install that skill for client setup, the tool map, search results, the no-match path and wallet-signed intents.
 mcp_server: aigora
 ---
 
-Use this skill to:
-- Find Celo registered agents (`find_agent`)
-- Look up agent profiles (`get_agent_profile`)
-- Create on-chain bounties (`create_bounty_intent`)
-- Submit feedback (`give_feedback_intent`)
-- Open DMs (`open_dm_intent`)
+The Aigora MCP skill is maintained in one place: https://github.com/trionlabs/aigora-skills/tree/main/skills/aigora-mcp
 
-Always confirm with the user before TX-intent tools.
+Install it with `npx openskills install trionlabs/aigora-skills --skill aigora-mcp -g`, or `npx skills add https://github.com/trionlabs/aigora-skills --all`.
+
+Until it is installed: trust the server's current tool list; read tools need no key or wallet; every `*_intent` tool returns an unsigned transaction that the user signs in their own wallet, so confirm with the user first and never handle private keys.

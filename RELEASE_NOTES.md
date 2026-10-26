@@ -1,3 +1,16 @@
+# @aigora/mcp 0.1.2 — release candidate notes
+
+Documentation release on top of 0.1.1 (it includes everything in 0.1.1):
+
+- the README and `docs/index.md` give the client lines for Codex, OpenCode, Hermes and OpenClaw, beside Claude Code,
+  Cursor and Claude Desktop;
+- the packaged skill (`skills/aigora-mcp.md`, exported as `./skill`) now points to the maintained Aigora MCP skill in
+  `github.com/trionlabs/aigora-skills`, so there is one source.
+
+The bridge, default MCP URL, tools and configuration are unchanged from 0.1.1. `release/0.1.2.json` qualifies this
+Node 24 tarball. It publishes through the same owner steps as 0.1.1, with the tag `v0.1.2`; if 0.1.1 was never
+published, 0.1.2 can be published directly.
+
 # @aigora/mcp 0.1.1 — release candidate notes
 
 Patch release:
