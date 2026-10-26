@@ -1,6 +1,6 @@
 # @aigora/mcp 0.1.2 — release candidate notes
 
-Documentation release on top of 0.1.1 (it includes everything in 0.1.1):
+Documentation release on top of 0.1.1 (it includes everything in 0.1.1, which is not published to npm):
 
 - the README and `docs/index.md` give the client lines for Codex, OpenCode, Hermes and OpenClaw, beside Claude Code,
   Cursor and Claude Desktop;
@@ -8,10 +8,23 @@ Documentation release on top of 0.1.1 (it includes everything in 0.1.1):
   `github.com/trionlabs/aigora-skills`, so there is one source.
 
 The bridge, default MCP URL, tools and configuration are unchanged from 0.1.1. `release/0.1.2.json` qualifies this
-Node 24 tarball. It publishes through the same owner steps as 0.1.1, with the tag `v0.1.2`; if 0.1.1 was never
-published, 0.1.2 can be published directly.
+Node 24 tarball.
+
+0.1.2 is published from the owner's machine with npm 2FA and without npm provenance, as 0.1.0 was. The release
+workflow's publish job needs a GitHub-hosted runner (npm trusted publishing supports no other), and that runner is not
+available to this repository yet. Later versions publish only through `.github/workflows/release.yml` with npm trusted
+publishing and provenance. Owner steps for 0.1.2:
+
+1. Under **Node 24.21.0** (other Node versions gzip differently), from the release commit on `main`: `npm ci`,
+   `npm test`, `npm run typecheck` and `npm run verify:release`.
+2. `npm pack`, then check that the tarball's SHA-256 and npm integrity equal `release/0.1.2.json`.
+3. `npm publish ./aigora-mcp-0.1.2.tgz --access public` with npm 2FA.
+4. Confirm that `npm view @aigora/mcp@0.1.2 dist.integrity` equals `release/0.1.2.json`, then push the tag `v0.1.2`
+   on the release commit. For an already published version, `release.yml` only reads the registry back.
 
 # @aigora/mcp 0.1.1 — release candidate notes
+
+Not published to npm: 0.1.2 includes these changes and is published instead.
 
 Patch release:
 
@@ -22,8 +35,8 @@ Patch release:
 The default MCP URL, tools and configuration are unchanged from 0.1.0. `release/0.1.1.json` qualifies this Node 24
 tarball as `release/0.1.0.json` did for 0.1.0.
 
-0.1.1 is the first version published only through `.github/workflows/release.yml`, with npm trusted publishing and
-provenance. CI and the release checks run on Blacksmith runners; the publish job alone runs on a GitHub-hosted
+0.1.1 was to be the first version published only through `.github/workflows/release.yml`, with npm trusted
+publishing and provenance. CI and the release checks run on Blacksmith runners; the publish job alone runs on a GitHub-hosted
 runner, because npm trusted publishing does not support self-hosted runners. Owner steps:
 
 1. On the release commit, `ci` must pass, including `npm run verify:release`; that proves the Linux tarball equals
@@ -59,8 +72,8 @@ Owner release steps for 0.1.0:
 4. Publish 0.1.0 from the owner's machine with npm 2FA, from the verified tarball: under **Node 24.21.0** (other Node
    versions gzip differently), `npm pack`, check that the tarball's SHA-256 and npm integrity equal
    `release/0.1.0.json`, then `npm publish ./aigora-mcp-0.1.0.tgz --access public`. 0.1.0 is published without npm
-   provenance; later versions publish only through `.github/workflows/release.yml` with npm trusted publishing and
-   provenance from this public repository.
+   provenance, and so is 0.1.2 (see its notes); other later versions publish only through
+   `.github/workflows/release.yml` with npm trusted publishing and provenance from this public repository.
 5. Confirm that `npm view @aigora/mcp@0.1.0 dist.integrity` equals `release/0.1.0.json`, then tag `v0.1.0`.
 
 The bundle connects only to the exact production MCP URL recorded in `release/0.1.0.json`; a later default-URL change
