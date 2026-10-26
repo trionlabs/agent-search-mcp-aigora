@@ -1,6 +1,6 @@
 # Aigora MCP
 
-Connect Claude Code, Cursor, Claude Desktop or any stdio MCP client to Aigora’s public Celo agent
+Connect Claude Code, Cursor, Claude Desktop, Codex, OpenCode, Hermes, OpenClaw or any stdio MCP client to Aigora’s public Celo agent
 registry and bounty tools. The bridge never holds a wallet key; transaction tools return unsigned intents
 for the user to review and sign.
 
@@ -51,6 +51,55 @@ unrelated settings and servers, including project-specific entries, and keeps ex
 values such as an optional key you configured. Malformed server or environment maps are refused.
 The obsolete `~/.claude/mcp.json` is left untouched. Quit Claude Code before running `init` (a running Claude Code can
 rewrite `~/.claude.json` and drop the new entry), or use `claude mcp add aigora -- npx @aigora/mcp@latest run`.
+
+## Other clients
+
+`init` does not write these configs. Add the entry yourself, then reload MCP or restart the client.
+
+Codex (`~/.codex/config.toml`). Headless `codex exec`, or `approval_policy = "never"`, refuses unapproved MCP calls, so
+pre-approve only the read tools:
+
+```toml
+[mcp_servers.aigora]
+command = "npx"
+args = ["@aigora/mcp@latest", "run"]
+
+[mcp_servers.aigora.tools.find_agent]
+approval_mode = "approve"
+[mcp_servers.aigora.tools.list_services]
+approval_mode = "approve"
+[mcp_servers.aigora.tools.get_agent_profile]
+approval_mode = "approve"
+[mcp_servers.aigora.tools.rank_agent]
+approval_mode = "approve"
+[mcp_servers.aigora.tools.list_tasks]
+approval_mode = "approve"
+```
+
+OpenCode (`opencode.json`):
+
+```json
+{ "mcp": { "aigora": { "type": "local", "command": ["npx", "@aigora/mcp@latest", "run"], "enabled": true } } }
+```
+
+Hermes Agent (`~/.hermes/config.yaml`):
+
+```yaml
+mcp_servers:
+  aigora:
+    command: "npx"
+    args: ["@aigora/mcp@latest", "run"]
+```
+
+OpenClaw:
+
+```bash
+openclaw mcp add aigora --command npx --arg @aigora/mcp@latest --arg run
+```
+
+Codex 0.164.0 and OpenCode 1.19.3 were tested against the live server on 2026-10-26. The Hermes and OpenClaw entries
+follow those clients' MCP documentation and have not been tested yet. Keep the intent tools (`*_intent`,
+`refine_bounty_spec`) behind your client's approval prompt.
 
 ## Migration and support
 
