@@ -78,14 +78,17 @@ export async function startBridge(opts = {}) {
   remote.onmessage = (msg) => {
     local.send(msg).catch((err) => onError('local send', err));
   };
+  // Closing aborts the HTTP transport's open SSE stream, and the SDK reports that abort through onerror: not a failure.
+  let closing = false;
   local.onerror = (err) => onError('stdio', err);
-  remote.onerror = (err) => onError('http', err);
+  remote.onerror = (err) => { if (!closing) onError('http', err); };
 
   // `closed` resolves when the LOCAL client hangs up (stdio EOF) — the CLI awaits it so the npx
   // process lives exactly as long as the editor-side MCP session does.
   let resolveClosed;
   const closed = new Promise((r) => { resolveClosed = r; });
   local.onclose = () => {
+    closing = true;
     remote.close().catch(() => {});
     resolveClosed();
   };
@@ -101,6 +104,7 @@ export async function startBridge(opts = {}) {
   return {
     closed,
     close: async () => {
+      closing = true;
       await Promise.allSettled([local.close(), remote.close()]);
       resolveClosed();
     },

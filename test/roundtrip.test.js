@@ -1,14 +1,15 @@
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import { startFixtureServer } from './fixtures/mcpServer.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-// M6-17B (#142): the clean-env round-trip. A local fixture MCP server (test/fixtures/mcpServer.mjs) stands in for
+// The clean-env round-trip. A local fixture MCP server (test/fixtures/mcpServer.mjs) stands in for
 // Aigora's service; the REAL bin/mcp.js bridge runs as a child process and a stdio MCP session goes through it.
 // The live service's tool contract is checked in the Aigora monorepo against the published package.
 
 /** @type {import('node:child_process').ChildProcess} */ let bridge;
-/** @type {{ url: string, close: () => Promise<unknown> }} */ let fixture;
+/** @type {{ url: string, close: () => Promise<unknown>, getArrived: Promise<unknown> }} */ let fixture;
 
 beforeAll(async () => {
   fixture = await startFixtureServer();
@@ -75,5 +76,13 @@ describe('stdio ⇄ streamable-http round-trip against a local MCP server', () =
     rpc(bridge, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'find_agent', arguments: { query: 'x' } } });
     const call = await replyFor(bridge, 3);
     expect(call).toMatchObject({ id: 3, result: { content: [{ type: 'text', text: 'fixture:x' }] } });
+
+    // The editor hangs up while the bridge's SSE GET is pending: the bridge exits 0, and stderr holds only its startup
+    // line, no error from its own shutdown.
+    await fixture.getArrived;
+    bridge.stdin.end();
+    const [code] = await once(bridge, 'close'); // after stderr is drained
+    expect(code).toBe(0);
+    expect(bridgeErr.join('').trim().split('\n')).toEqual([`[aigora-mcp] bridging stdio ⇄ ${fixture.url}`]);
   }, 30_000);
 });

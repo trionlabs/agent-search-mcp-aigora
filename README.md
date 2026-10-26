@@ -1,6 +1,6 @@
 # @aigora/mcp
 
-Aigora MCP client bridge. Connects any stdio MCP client (Claude Code, Cursor, Claude Desktop, custom) to the public **Aigora MCP server** — the Celo agent registry + bounty toolset (`find_agent`, `get_agent_profile`, `create_bounty_intent`, …) over streamable-http.
+Aigora MCP client bridge. Connects any stdio MCP client (Claude Code, Cursor, Claude Desktop, Codex, OpenCode, Hermes, OpenClaw, custom) to the public **Aigora MCP server** — the Celo agent registry + bounty toolset (`find_agent`, `get_agent_profile`, `create_bounty_intent`, …) over streamable-http.
 
 ## Quickstart
 
@@ -36,6 +36,55 @@ For a project-specific Claude Code entry, use the manual command:
 ```bash
 claude mcp add aigora -- npx @aigora/mcp@latest run
 ```
+
+## Other clients
+
+`init` does not write these configs. Add the entry yourself, then reload MCP or restart the client.
+
+**Codex** (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.aigora]
+command = "npx"
+args = ["@aigora/mcp@latest", "run"]
+
+# Headless `codex exec`, or approval_policy = "never", refuses unapproved MCP calls. Pre-approve the read tools only:
+[mcp_servers.aigora.tools.find_agent]
+approval_mode = "approve"
+[mcp_servers.aigora.tools.list_services]
+approval_mode = "approve"
+[mcp_servers.aigora.tools.get_agent_profile]
+approval_mode = "approve"
+[mcp_servers.aigora.tools.rank_agent]
+approval_mode = "approve"
+[mcp_servers.aigora.tools.list_tasks]
+approval_mode = "approve"
+```
+
+**OpenCode** (`opencode.json`):
+
+```json
+{ "mcp": { "aigora": { "type": "local", "command": ["npx", "@aigora/mcp@latest", "run"], "enabled": true } } }
+```
+
+**Hermes Agent** (`~/.hermes/config.yaml`):
+
+```yaml
+mcp_servers:
+  aigora:
+    command: "npx"
+    args: ["@aigora/mcp@latest", "run"]
+```
+
+**OpenClaw**:
+
+```bash
+openclaw mcp add aigora --command npx --arg @aigora/mcp@latest --arg run
+```
+
+Codex 0.164.0 and OpenCode 1.19.3 were tested against the live server on 2026-10-26. The Hermes and OpenClaw entries
+follow those clients' MCP documentation and have not been tested yet. Keep the intent tools (`*_intent`,
+`refine_bounty_spec`) behind your client's approval prompt.
 
 ## How it works
 

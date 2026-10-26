@@ -77,7 +77,7 @@ try {
   assert(evidence.packed_bytes === pack.size, 'release evidence packed size');
   assert(evidence.unpacked_bytes === pack.unpackedSize, 'release evidence unpacked size');
   equal(evidence.files, paths, 'release evidence file allowlist');
-  // AD-372 §2 / OA-102: a published default authority is frozen in the evidence and in the shipped bundle.
+  // A published default authority is frozen in the evidence and in the shipped bundle.
   assert(evidence.default_mcp_url === DEFAULT_MCP_URL, 'release evidence default MCP URL');
   assert((await readFile(join(PACKAGE_ROOT, 'dist', 'cli.js'), 'utf8')).includes(DEFAULT_MCP_URL), 'bundle default MCP URL');
 

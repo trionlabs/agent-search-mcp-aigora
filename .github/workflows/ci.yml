@@ -7,7 +7,10 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    # Pushes and PRs by the owner, members and collaborators run on Blacksmith; any other PR (a fork, a bot) defaults
+    # to a GitHub-hosted runner. A PR can edit this file, so this is a default, not a guard: the guard is the
+    # repository's fork-PR approval for all external contributors, so review .github/ changes before approving a run.
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -18,3 +21,5 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # The tarball packed here, as release.yml packs it, must equal the committed release evidence.
+      - run: npm run verify:release
