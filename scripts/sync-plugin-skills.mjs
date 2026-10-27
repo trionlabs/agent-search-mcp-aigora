@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, posix, resolve } from 'node:path';
 import { parseArgs, promisify } from 'node:util';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 export const UPSTREAM_REPOSITORY = 'https://github.com/trionlabs/aigora-skills';
 export const SKILL_PATHS = [
@@ -20,7 +20,13 @@ export const SKILL_PATHS = [
 const exec = promisify(execFile);
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
-async function sourceGit(repo, args) {
+export function parseJson(bytes) {
+  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
+  catch { throw new Error('invalid JSON manifest or receipt'); }
+}
+
+
+export async function sourceGit(repo, args) {
   try {
     const result = await exec('git', ['--no-replace-objects', '-C', repo, ...args], {
       encoding: 'buffer', maxBuffer: 1_048_576,
@@ -152,7 +158,7 @@ export async function syncPluginSkills(input) {
   return { sourceCommit: source.sourceCommit, fileHashes: source.fileHashes, changed };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (import.meta.main) {
   try {
     const { values } = parseArgs({ options: {
       'source-repo': { type: 'string' }, 'source-commit': { type: 'string' },
@@ -161,7 +167,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     assert(values['approved-files'], 'approved-files path required');
     const result = await syncPluginSkills({
       sourceRepo: values['source-repo'], approvedSourceCommit: values['source-commit'],
-      approvedFileHashes: JSON.parse(await readFile(values['approved-files'], 'utf8')),
+      approvedFileHashes: parseJson(await readFile(values['approved-files'])),
       packageRoot: resolve(dirname(fileURLToPath(import.meta.url)), '..'),
       mode: values.check ? 'check' : 'write',
     });

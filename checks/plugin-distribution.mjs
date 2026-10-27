@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -170,4 +170,187 @@ test('snapshot_check_is_nonmutating_and_rejects_unrelated_output', async (t) => 
   const withExtra = await snapshot(f.packageRoot);
   await assert.rejects(syncPluginSkills({ ...f, mode: 'write' }), /unexpected|roster/i);
   assert.deepEqual(await snapshot(f.packageRoot), withExtra);
+});
+
+const BRIDGE_BASE = '978e66196ce320211eba970a7d48e1a8ffe0ca61';
+const NATIVE_PATHS = [
+  '.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json',
+  'plugins/aigora/plugin.json', 'plugins/aigora/mcp.json',
+  'plugins/aigora/.claude-plugin/plugin.json', 'plugins/aigora/.mcp.json',
+];
+
+async function verifier() {
+  const url = new URL('../scripts/verify-plugin.mjs', import.meta.url);
+  assert.ok(existsSync(url), 'plugin verifier is not implemented');
+  return import(url.href);
+}
+
+async function packageFixture(t) {
+  const { syncPluginSkills } = await generator();
+  const f = await fixture(t);
+  git(f.packageRoot, ['init', '--quiet']);
+  git(f.packageRoot, ['fetch', '--quiet', '--no-tags', ROOT, BRIDGE_BASE]);
+  git(f.packageRoot, ['read-tree', '--reset', '-u', BRIDGE_BASE]);
+  for (const path of NATIVE_PATHS) {
+    await mkdir(dirname(join(f.packageRoot, path)), { recursive: true });
+    await writeFile(join(f.packageRoot, path), await readFile(join(ROOT, path)));
+  }
+  await writeFile(join(f.sourceRepo, 'plugin.json'), '{"version":"0.1.2"}\n');
+  await syncPluginSkills({ ...f, mode: 'write' });
+  return { ...f, expectedVersion: '0.2.0', previousHomeReleaseReceipt: null };
+}
+
+async function changeJson(f, path, mutate) {
+  const target = join(f.packageRoot, path);
+  const value = JSON.parse(await readFile(target, 'utf8'));
+  mutate(value);
+  await writeFile(target, JSON.stringify(value, null, 2) + '\n');
+}
+
+test('catalogs_confined_to_plugin_root', async (t) => {
+  const { verifyPlugin } = await verifier();
+  for (const path of NATIVE_PATHS.slice(0, 2)) {
+    const f = await packageFixture(t);
+    await changeJson(f, path, (x) => {
+      if (typeof x.plugins[0].source === 'string') x.plugins[0].source = './';
+      else x.plugins[0].source.path = '../other';
+    });
+    await assert.rejects(verifyPlugin(f), /catalog|source|manifest/i);
+  }
+});
+
+test('payload_matches_upstream_and_complete_roster', async (t) => {
+  const { verifyPlugin } = await verifier();
+  for (const edit of [
+    async (f) => writeFile(join(f.packageRoot, 'plugins/aigora/' + PATHS[0]), 'drift'),
+    async (f) => rm(join(f.packageRoot, 'plugins/aigora/' + PATHS[0])),
+    async (f) => writeFile(join(f.packageRoot, 'plugins/aigora/extra.json'), '{}'),
+    async (f) => changeJson(f, 'plugins/aigora/skills-source.json', (x) => { x.commit = 'f'.repeat(40); }),
+    async (f) => {
+      await rm(join(f.packageRoot, 'plugins/aigora/mcp.json'));
+      await symlink('/etc/hosts', join(f.packageRoot, 'plugins/aigora/mcp.json'));
+    },
+  ]) {
+    const f = await packageFixture(t);
+    await edit(f);
+    await assert.rejects(verifyPlugin(f), /payload|roster|source|manifest|hash|regular|symlink/i);
+  }
+});
+
+test('policies_and_https_transports_unchanged', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const mutations = [
+    ['.agents/plugins/marketplace.json', (x) => { x.plugins[0].policy.installation = 'INSTALLED_BY_DEFAULT'; }],
+    ['.agents/plugins/marketplace.json', (x) => { x.plugins[0].policy.authentication = 'NONE'; }],
+    ['plugins/aigora/mcp.json', (x) => { x.mcpServers.aigora.url = 'http://localhost:1234/mcp'; }],
+    ['plugins/aigora/mcp.json', (x) => { x.mcpServers.aigora.command = 'npx'; }],
+    ['plugins/aigora/.mcp.json', (x) => { x.mcpServers.aigora.headers = { Authorization: 'test-not-a-real-key' }; }],
+    ['plugins/aigora/.claude-plugin/plugin.json', (x) => { x.hooks = {}; }],
+    ['plugins/aigora/.mcp.json', (x) => { x.mcpServers.other = { type: 'http', url: 'https://other.invalid' }; }],
+  ];
+  for (const [path, mutate] of mutations) {
+    const f = await packageFixture(t);
+    await changeJson(f, path, mutate);
+    await assert.rejects(verifyPlugin(f), /policy|manifest|server|endpoint|transport|permission/i);
+  }
+});
+
+test('both_manifests_equal_within_home', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  const result = await verifyPlugin(f);
+  assert.equal(result.version, '0.2.0'); // Legacy's independent line is 0.1.2.
+  assert.equal(result.distributionRepository, 'https://github.com/trionlabs/agent-search-mcp-aigora');
+  assert.equal(result.files.length, 13);
+  await changeJson(f, 'plugins/aigora/.claude-plugin/plugin.json', (x) => { x.version = '0.2.1'; });
+  await assert.rejects(verifyPlugin(f), /version/i);
+});
+
+test('first_release_bootstrap_then_same_home_baseline', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  const first = await verifyPlugin(f);
+  assert.equal((await verifyPlugin({ ...f, previousHomeReleaseReceipt: first })).payloadSha256, first.payloadSha256);
+  for (const path of ['plugins/aigora/plugin.json', 'plugins/aigora/.claude-plugin/plugin.json']) {
+    await changeJson(f, path, (x) => { x.version = '0.2.1'; });
+  }
+  await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.2.1' }), /prior|previous|bootstrap/i);
+  const next = await verifyPlugin({ ...f, expectedVersion: '0.2.1', previousHomeReleaseReceipt: first });
+  assert.equal(next.version, '0.2.1');
+  assert.notEqual(next.payloadSha256, first.payloadSha256);
+  const foreign = { ...first, distributionRepository: 'https://github.com/trionlabs/aigora-skills', version: '0.1.2' };
+  await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.2.1', previousHomeReleaseReceipt: foreign }), /home|repository/i);
+  await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.2.1', previousHomeReleaseReceipt: { version: '0.2.0' } }), /receipt|baseline/i);
+});
+
+test('changed_payload_requires_new_version', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  const first = await verifyPlugin(f);
+  // Identical JSON data with different shipped bytes still changes the payload.
+  const path = join(f.packageRoot, 'plugins/aigora/plugin.json');
+  await writeFile(path, (await readFile(path, 'utf8')) + '\n');
+  await assert.rejects(verifyPlugin({ ...f, previousHomeReleaseReceipt: first }), /version/i);
+});
+
+test('frozen_npm_input_change_rejected', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  await writeFile(join(f.packageRoot, 'README.md'), 'unreviewed npm README');
+  await assert.rejects(verifyPlugin(f), /frozen|npm/i);
+});
+
+test('new_plugin_paths_excluded_from_npm_roster', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  const before = await snapshot(join(f.packageRoot, 'plugins'));
+  await verifyPlugin(f);
+  assert.deepEqual(await snapshot(join(f.packageRoot, 'plugins')), before);
+  const packageJson = JSON.parse(await readFile(join(f.packageRoot, 'package.json'), 'utf8'));
+  assert(!packageJson.files.includes('plugins/'));
+  assert(!packageJson.files.includes('.github/'));
+  assert.equal(packageJson.version, '0.1.2');
+});
+
+test('malformed_manifest_errors_do_not_echo_content', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  await writeFile(join(f.packageRoot, 'plugins/aigora/mcp.json'), 'sensitive-fixture-marker-not-json');
+  await assert.rejects(verifyPlugin(f), (error) => {
+    assert(!error.message.includes('sensitive'), 'JSON parser must not echo payload content');
+    return true;
+  });
+});
+
+test('snapshot_cli_parse_error_does_not_echo_input', async (t) => {
+  const f = await fixture(t);
+  await mkdir(join(f.packageRoot, 'scripts'));
+  await writeFile(join(f.packageRoot, 'scripts/sync-plugin-skills.mjs'), await readFile(join(ROOT, 'scripts/sync-plugin-skills.mjs')));
+  const hashFile = join(f.root, 'malformed-input.json');
+  await writeFile(hashFile, 'sensitive-fixture-marker-not-json');
+  const result = spawnSync(process.execPath, [
+    await realpath(join(f.packageRoot, 'scripts/sync-plugin-skills.mjs')),
+    '--source-repo', f.sourceRepo, '--source-commit', f.approvedSourceCommit, '--approved-files', hashFile,
+  ], { encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert(!result.stderr.includes('sensitive'), 'CLI must not echo input content');
+  assert.equal(result.stdout, '');
+});
+
+test('snapshot_cli_executes_from_native_temp_paths_and_symlink_entry', async (t) => {
+  const f = await fixture(t);
+  await mkdir(join(f.packageRoot, 'scripts'));
+  await writeFile(join(f.packageRoot, 'scripts/sync-plugin-skills.mjs'), await readFile(join(ROOT, 'scripts/sync-plugin-skills.mjs')));
+  const hashFile = join(f.root, 'approved-files.json');
+  await writeFile(hashFile, JSON.stringify(f.approvedFileHashes));
+  const entry = join(f.packageRoot, 'scripts/sync-plugin-skills.mjs');
+  const alias = join(f.root, 'snapshot-entry.mjs');
+  await symlink(entry, alias);
+  for (const path of [entry, alias]) {
+    const result = spawnSync(process.execPath, [
+      path, '--source-repo', f.sourceRepo, '--source-commit', f.approvedSourceCommit, '--approved-files', hashFile,
+    ], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert(result.stdout.includes(f.approvedSourceCommit), 'CLI must actually execute on the native temporary path');
+  }
 });
