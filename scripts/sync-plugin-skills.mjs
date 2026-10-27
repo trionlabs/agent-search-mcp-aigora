@@ -20,6 +20,13 @@ export const SKILL_PATHS = [
 const exec = promisify(execFile);
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
+export function assertToolRuntime(version, hasEntryPoint) {
+  const [major, minor] = String(version).split('.').map(Number);
+  assert(major === 24 && minor >= 2 && hasEntryPoint,
+    'Node 24.2+ within Node 24.x and import.meta.main are required for plugin tooling');
+}
+assertToolRuntime(process.versions.node, typeof import.meta.main === 'boolean');
+
 export function parseJson(bytes) {
   try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
   catch { throw new Error('invalid JSON manifest or receipt'); }

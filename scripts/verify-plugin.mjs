@@ -130,6 +130,12 @@ export async function verifyGuides({ packageRoot, pluginFiles }) {
 export async function verifyPlugin(input) {
   versionParts(input.expectedVersion);
   assert(compareVersions(input.expectedVersion, '0.2.0') >= 0, 'new-home plugin version below first release');
+  assert(input.bootstrap === undefined || typeof input.bootstrap === 'boolean', 'bootstrap must be explicit boolean');
+  const bootstrap = input.bootstrap === true;
+  const prior = input.previousHomeReleaseReceipt;
+  assert(!(bootstrap && prior != null), 'bootstrap cannot be combined with a previous receipt');
+  if (bootstrap) assert(input.expectedVersion === '0.2.0', 'bootstrap is only for the first new-home release');
+  else assert(prior && typeof prior === 'object' && !Array.isArray(prior), 'previous same-home receipt required, or explicit first-release bootstrap');
   const source = await readApprovedSkills(input);
   const packageRoot = resolve(input.packageRoot);
   await validateCatalogs(packageRoot);
@@ -141,7 +147,8 @@ export async function verifyPlugin(input) {
   for (const [path, bytes] of source.files) {
     assert(pluginFiles.get(path).equals(bytes), 'approved source payload hash mismatch: ' + path);
   }
-  matches(safeJson(pluginFiles.get('skills-source.json')), source.manifest, 'source manifest differs from approved commit/hashes');
+  const generatedManifest = Buffer.from(JSON.stringify(source.manifest, null, 2) + '\n');
+  assert(pluginFiles.get('skills-source.json').equals(generatedManifest), 'generated provenance manifest bytes differ');
   validateNative(pluginFiles, input.expectedVersion);
   for (const bytes of pluginFiles.values()) {
     assert(!/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|aigora_mcp_live_[A-Za-z0-9_-]{20,}/.test(bytes.toString('utf8')),
@@ -149,10 +156,7 @@ export async function verifyPlugin(input) {
   }
   const files = expectedPaths.map((path) => ({ path, sha256: sha256(pluginFiles.get(path)) }));
   const payloadSha256 = payloadDigest(files);
-  const prior = input.previousHomeReleaseReceipt;
-  if (prior == null) {
-    assert(input.expectedVersion === '0.2.0', 'previous same-home receipt required after first-release bootstrap');
-  } else {
+  if (!bootstrap) {
     validatePriorReceipt(prior, expectedPaths);
     const order = compareVersions(input.expectedVersion, prior.version);
     assert(order >= 0 && (order > 0 || payloadSha256 === prior.payloadSha256), 'changed payload requires a new version in this home');
@@ -161,6 +165,7 @@ export async function verifyPlugin(input) {
   await verifyGuides({ packageRoot, pluginFiles });
   return {
     schemaVersion: 1, distributionRepository: DISTRIBUTION_REPOSITORY, version: input.expectedVersion,
+    baselineMode: bootstrap ? 'explicit-first-release' : 'prior-same-home',
     sourceRepository: source.manifest.repository, sourceCommit: source.sourceCommit,
     payloadSha256, files, endpoint: ENDPOINT, frozenNpm,
   };
@@ -172,13 +177,16 @@ if (import.meta.main) {
       'source-repo': { type: 'string' }, 'source-commit': { type: 'string' },
       'approved-files': { type: 'string' }, 'previous-home-receipt': { type: 'string' },
       'expected-version': { type: 'string' },
+      bootstrap: { type: 'boolean', default: false },
     } });
     assert(values['approved-files'], 'approved-files path required');
+    assert(!(values.bootstrap && values['previous-home-receipt']), 'bootstrap cannot be combined with a receipt path');
+    const previous = values['previous-home-receipt'] ? safeJson(await readFile(values['previous-home-receipt'])) : null;
+    if (values['previous-home-receipt']) assert(previous && typeof previous === 'object' && !Array.isArray(previous), 'previous receipt file must contain a JSON object');
     const result = await verifyPlugin({
       sourceRepo: values['source-repo'], approvedSourceCommit: values['source-commit'],
       approvedFileHashes: safeJson(await readFile(values['approved-files'])),
-      previousHomeReleaseReceipt: values['previous-home-receipt']
-        ? safeJson(await readFile(values['previous-home-receipt'])) : null,
+      previousHomeReleaseReceipt: previous, bootstrap: values.bootstrap,
       expectedVersion: values['expected-version'],
       packageRoot: resolve(dirname(fileURLToPath(import.meta.url)), '..'),
     });

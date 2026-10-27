@@ -34,4 +34,10 @@ The snapshot helper reads only Git blobs at the exact qualified upstream commit 
 
 The verifier checks catalogs, the complete plugin payload, same-home version history, guide links and frozen bridge source inputs. The first new-home release creates its own receipt; later releases compare against that home's accepted receipt. Receipts from another home are rejected.
 
+The release coordinator retains each accepted receipt, including its exact distribution commit, version and payload hashes, and supplies it to subsequent checks. Only the first new-home candidate uses explicit `--bootstrap`; later checks supply `--previous-home-receipt`. These options cannot be combined, and a missing or null receipt is not permission to bootstrap. Bootstrap is an explicit publisher choice, not proof that no remote release exists.
+
+The recorded upstream commit must remain publicly retrievable under a retained ref. The coordinated publisher checks that exact SHA before a stable tag or announcement; squash/rebase alone must not leave provenance pointing to a discarded local candidate. A changed pin requires regeneration and the applicable version discipline.
+
+Maintainer tools require Node 24.2 or newer within Node 24.x; this project's execution runtime is Node 24.21.0. They fail closed if the runtime lacks `import.meta.main`. Verification also needs the recorded bridge-base Git objects; the frozen baseline is not automatically fetched or updated when the bridge evolves.
+
 The existing npm release verifier additionally compares the actual packed artifact with the immutable 0.1.2 receipt. The root [bridge README](README.md), npm scripts and release evidence stay unchanged. Source checks and candidate publication do not constitute client qualification.

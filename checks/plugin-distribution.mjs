@@ -203,7 +203,7 @@ async function packageFixture(t) {
   }
   await writeFile(join(f.sourceRepo, 'plugin.json'), '{"version":"0.1.2"}\n');
   await syncPluginSkills({ ...f, mode: 'write' });
-  return { ...f, expectedVersion: '0.2.0', previousHomeReleaseReceipt: null };
+  return { ...f, expectedVersion: '0.2.0', bootstrap: true, previousHomeReleaseReceipt: null };
 }
 
 async function changeJson(f, path, mutate) {
@@ -276,17 +276,17 @@ test('first_release_bootstrap_then_same_home_baseline', async (t) => {
   const { verifyPlugin } = await verifier();
   const f = await packageFixture(t);
   const first = await verifyPlugin(f);
-  assert.equal((await verifyPlugin({ ...f, previousHomeReleaseReceipt: first })).payloadSha256, first.payloadSha256);
+  assert.equal((await verifyPlugin({ ...f, bootstrap: false, previousHomeReleaseReceipt: first })).payloadSha256, first.payloadSha256);
   for (const path of ['plugins/aigora/plugin.json', 'plugins/aigora/.claude-plugin/plugin.json']) {
     await changeJson(f, path, (x) => { x.version = '0.2.1'; });
   }
   await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.2.1' }), /prior|previous|bootstrap/i);
-  const next = await verifyPlugin({ ...f, expectedVersion: '0.2.1', previousHomeReleaseReceipt: first });
+  const next = await verifyPlugin({ ...f, expectedVersion: '0.2.1', bootstrap: false, previousHomeReleaseReceipt: first });
   assert.equal(next.version, '0.2.1');
   assert.notEqual(next.payloadSha256, first.payloadSha256);
   const foreign = { ...first, distributionRepository: 'https://github.com/trionlabs/aigora-skills', version: '0.1.2' };
-  await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.2.1', previousHomeReleaseReceipt: foreign }), /home|repository/i);
-  await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.2.1', previousHomeReleaseReceipt: { version: '0.2.0' } }), /receipt|baseline/i);
+  await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.2.1', bootstrap: false, previousHomeReleaseReceipt: foreign }), /home|repository/i);
+  await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.2.1', bootstrap: false, previousHomeReleaseReceipt: { version: '0.2.0' } }), /receipt|baseline/i);
 });
 
 test('changed_payload_requires_new_version', async (t) => {
@@ -296,7 +296,7 @@ test('changed_payload_requires_new_version', async (t) => {
   // Identical JSON data with different shipped bytes still changes the payload.
   const path = join(f.packageRoot, 'plugins/aigora/plugin.json');
   await writeFile(path, (await readFile(path, 'utf8')) + '\n');
-  await assert.rejects(verifyPlugin({ ...f, previousHomeReleaseReceipt: first }), /version/i);
+  await assert.rejects(verifyPlugin({ ...f, bootstrap: false, previousHomeReleaseReceipt: first }), /version/i);
 });
 
 test('frozen_npm_input_change_rejected', async (t) => {
@@ -396,4 +396,77 @@ test('verifier_rejects_symlinked_plugin_parent', async (t) => {
   await rename(join(f.packageRoot, 'plugins'), outside);
   await symlink(outside, join(f.packageRoot, 'plugins'));
   await assert.rejects(verifyPlugin(f), /directory|regular|symlink/i);
+});
+
+test('bootstrap_is_explicit_and_never_combined_with_a_receipt', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  await assert.rejects(verifyPlugin({ ...f, bootstrap: false }), /bootstrap|previous|receipt/i);
+  await assert.rejects(verifyPlugin({ ...f, bootstrap: undefined }), /bootstrap|previous|receipt/i);
+  const first = await verifyPlugin(f);
+  await assert.rejects(verifyPlugin({ ...f, previousHomeReleaseReceipt: first }), /bootstrap|combined/i);
+  await verifyPlugin({ ...f, bootstrap: false, previousHomeReleaseReceipt: first });
+});
+
+test('generated_provenance_requires_exact_bytes', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  const path = join(f.packageRoot, 'plugins/aigora/skills-source.json');
+  const data = JSON.parse(await readFile(path, 'utf8'));
+  await writeFile(path, JSON.stringify(data) + '\n');
+  await assert.rejects(verifyPlugin(f), /provenance|generated|manifest|byte/i);
+});
+
+test('unsupported_tool_runtime_fails_instead_of_silent_cli_success', async () => {
+  const module = await generator();
+  assert.equal(typeof module.assertToolRuntime, 'function', 'runtime fail-closed guard not implemented');
+  for (const [version, hasEntryPoint] of [['24.0.0', false], ['24.1.0', false], ['24.21.0', false], ['22.23.2', true], ['25.0.0', true]]) {
+    assert.throws(() => module.assertToolRuntime(version, hasEntryPoint), /Node 24/i);
+  }
+  assert.doesNotThrow(() => module.assertToolRuntime('24.21.0', true));
+});
+
+test('version_floor_downgrade_and_inconsistent_prior_digest_rejected', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  await assert.rejects(verifyPlugin({ ...f, expectedVersion: '0.1.9' }), /version/i);
+  const first = await verifyPlugin(f);
+  await assert.rejects(verifyPlugin({
+    ...f, bootstrap: false, previousHomeReleaseReceipt: { ...first, payloadSha256: '0'.repeat(64) },
+  }), /hash|inconsistent/i);
+  for (const path of ['plugins/aigora/plugin.json', 'plugins/aigora/.claude-plugin/plugin.json']) {
+    await changeJson(f, path, (x) => { x.version = '0.2.1'; });
+  }
+  const next = await verifyPlugin({ ...f, expectedVersion: '0.2.1', bootstrap: false, previousHomeReleaseReceipt: first });
+  for (const path of ['plugins/aigora/plugin.json', 'plugins/aigora/.claude-plugin/plugin.json']) {
+    await changeJson(f, path, (x) => { x.version = '0.2.0'; });
+  }
+  await assert.rejects(verifyPlugin({ ...f, bootstrap: false, previousHomeReleaseReceipt: next }), /version/i);
+});
+
+test('verifier_cli_bootstrap_and_receipt_parse_are_fail_closed', async (t) => {
+  const f = await packageFixture(t);
+  for (const path of ['scripts/sync-plugin-skills.mjs', 'scripts/verify-plugin.mjs']) {
+    await writeFile(join(f.packageRoot, path), await readFile(join(ROOT, path)));
+  }
+  const hashFile = join(f.root, 'hashes.json');
+  await writeFile(hashFile, JSON.stringify(f.approvedFileHashes));
+  const args = [
+    join(f.packageRoot, 'scripts/verify-plugin.mjs'), '--source-repo', f.sourceRepo,
+    '--source-commit', f.approvedSourceCommit, '--approved-files', hashFile, '--expected-version', '0.2.0',
+  ];
+  const run = (extra) => spawnSync(process.execPath, [...args, ...extra], { encoding: 'utf8' });
+  assert.equal(run([]).status, 1, 'missing history must not imply bootstrap');
+  const boot = run(['--bootstrap']);
+  assert.equal(boot.status, 0, boot.stderr);
+  const receiptFile = join(f.root, 'receipt.json');
+  await writeFile(receiptFile, boot.stdout);
+  assert.equal(run(['--previous-home-receipt', receiptFile]).status, 0);
+  assert.equal(run(['--bootstrap', '--previous-home-receipt', receiptFile]).status, 1);
+  await writeFile(receiptFile, 'null');
+  assert.equal(run(['--previous-home-receipt', receiptFile]).status, 1);
+  await writeFile(receiptFile, 'sensitive-fixture-not-json');
+  const invalid = run(['--previous-home-receipt', receiptFile]);
+  assert.equal(invalid.status, 1);
+  assert(!invalid.stderr.includes('sensitive'), 'verifier CLI must not echo receipt contents');
 });
