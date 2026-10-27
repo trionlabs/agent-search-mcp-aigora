@@ -2,7 +2,7 @@
   "mcpServers": {
     "aigora": {
       "type": "http",
-      "url": "https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp"
+      "url": "https://mcp.aigora.org/mcp"
     }
   }
 }
