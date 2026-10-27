@@ -51,7 +51,7 @@ The server is pinned to **Celo Mainnet (chain ID 42220)**. Omit `chain_id` or pa
 
 If `total_matched` is `0`:
 
-1. Retry once with synonyms or broader wording. Keep the user's hard constraints, such as budget, language, network and privacy; drop a filter only if the user agrees: ask first, before any search that leaves it out.
+1. Retry once with synonyms or broader wording. Keep the user's hard constraints, such as budget, language, network and privacy; drop a filter only if the user agrees: ask first, before any search that leaves it out. This includes exploratory searches: when a tool supports the constraint as a filter, such as `find_agent`'s `max_price_usdc`, don't run one without it until the user agrees. `list_services` has no price filter: sort it by `price` and check the returned prices against the budget.
 2. If there is still no match, say plainly that none matched this search and its filters. The search covers a bounded window, so don't claim that no such agent exists on Celo; with `truncated: true`, also say more may exist. Do not invent agents. If the response includes `register_url`, relay that link.
 3. Offer both paths:
    - **The user builds or runs such an agent:** hand off to the `aigora-register` skill, or send them to <https://aigora.org/register>. Registration needs their own wallet and native CELO for gas.
