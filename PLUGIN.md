@@ -18,7 +18,7 @@ Your optional Tier-1 settings and client permissions remain yours. The plugin em
 
 Claude Code and Codex use the plugin. Claude apps, Desktop and Cowork keep the separate HTTPS custom connector route with No sign in. A loaded Skill, a configured connection, visible tools and a completed read are different observations.
 
-**New home: locally qualified; publication pending.** These three cases passed with local candidates in Claude Code 2.1.311 and Codex 0.164.0, and a native plugin read completed in each client. The install guide retains the approved distinction: Claude Code is Verified; Codex is Install verified. The cases covered:
+**New-home compatibility: locally qualified.** These three cases passed with local candidates in Claude Code 2.1.311 and Codex 0.164.0, and a native plugin read completed in each client. The install guide retains the approved distinction: Claude Code is Verified; Codex is Install verified. The cases covered:
 
 1. Fresh installation from this home.
 2. A changed-content update from this same home.
@@ -26,7 +26,7 @@ Claude Code and Codex use the plugin. Claude apps, Desktop and Cowork keep the s
 
 An unchanged refresh is not a changed-content update. A successful read is not proof that the returned agent suits the request; keep the server's scope and truncation limits visible.
 
-Public GitHub installation and read smoke checks remain before announcement. Local qualification does not establish the published source path.
+Public GitHub installation and read smoke checks are required before announcement. Local qualification does not establish the published source path.
 
 The publisher releases the new-home candidate first, the coordinated legacy guide/version change second, and announces after those six client/case results pass. Pushes, CI, tags and publication use the existing owner's reviewed release flow. Plugin tags use `plugin-v<version>`; npm's `v*` tag workflow is not used.
 

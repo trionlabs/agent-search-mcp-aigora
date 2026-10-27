@@ -10,6 +10,6 @@ Already using the plugin from trionlabs/aigora-skills? Keep that source and upda
 
 The URL plugin bundles three Skills and connects directly over HTTPS; it does not run the npm bridge. Plugin and npm versions are separate.
 
-**New-home status: locally qualified; publication pending.** Fresh installation, changed-content update and legacy-source update passed in Claude Code 2.1.311 and Codex 0.164.0, with a live read completed in each client. Public GitHub installation and read smoke checks remain before announcement. Claude Desktop/Cowork uses the separate connector described in the guide.
+**New-home compatibility: locally qualified.** Fresh installation, changed-content update and legacy-source update passed in Claude Code 2.1.311 and Codex 0.164.0, with a live read completed in each client. Public GitHub installation and read smoke checks are required before announcement. Claude Desktop/Cowork uses the separate connector described in the guide.
 
 This is the GitHub entry page. The npm package retains its own unchanged bridge README.
