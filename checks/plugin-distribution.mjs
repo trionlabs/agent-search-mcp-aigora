@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -195,6 +195,12 @@ async function packageFixture(t) {
     await mkdir(dirname(join(f.packageRoot, path)), { recursive: true });
     await writeFile(join(f.packageRoot, path), await readFile(join(ROOT, path)));
   }
+  for (const path of ['.github/README.md', 'PLUGIN.md']) {
+    if (existsSync(join(ROOT, path))) {
+      await mkdir(dirname(join(f.packageRoot, path)), { recursive: true });
+      await writeFile(join(f.packageRoot, path), await readFile(join(ROOT, path)));
+    }
+  }
   await writeFile(join(f.sourceRepo, 'plugin.json'), '{"version":"0.1.2"}\n');
   await syncPluginSkills({ ...f, mode: 'write' });
   return { ...f, expectedVersion: '0.2.0', previousHomeReleaseReceipt: null };
@@ -353,4 +359,41 @@ test('snapshot_cli_executes_from_native_temp_paths_and_symlink_entry', async (t)
     assert.equal(result.status, 0, result.stderr);
     assert(result.stdout.includes(f.approvedSourceCommit), 'CLI must actually execute on the native temporary path');
   }
+});
+
+test('guides_link_to_one_bundled_install_reference', async (t) => {
+  const module = await verifier();
+  assert.equal(typeof module.verifyGuides, 'function', 'new guide verification is not implemented');
+  const f = await packageFixture(t);
+  assert.ok(existsSync(join(f.packageRoot, 'PLUGIN.md')), 'migration guide is missing');
+  assert.ok(existsSync(join(f.packageRoot, '.github/README.md')), 'GitHub entry is missing');
+  await module.verifyPlugin(f);
+});
+
+test('guide_broken_relative_link_rejected', async (t) => {
+  const module = await verifier();
+  assert.equal(typeof module.verifyGuides, 'function', 'new guide verification is not implemented');
+  const f = await packageFixture(t);
+  const path = join(f.packageRoot, '.github/README.md');
+  const content = await readFile(path, 'utf8');
+  await writeFile(path, content.replace('../plugins/aigora/skills/aigora-mcp/references/install.md', '../missing.md'));
+  await assert.rejects(module.verifyPlugin(f), /reference|link/i);
+});
+
+test('guide_never_instructs_legacy_source_removal', async (t) => {
+  const module = await verifier();
+  assert.equal(typeof module.verifyGuides, 'function', 'new guide verification is not implemented');
+  const f = await packageFixture(t);
+  const path = join(f.packageRoot, 'PLUGIN.md');
+  await writeFile(path, (await readFile(path, 'utf8')) + '\ncodex plugin marketplace remove aigora\n');
+  await assert.rejects(module.verifyPlugin(f), /guide|policy|installation/i);
+});
+
+test('verifier_rejects_symlinked_plugin_parent', async (t) => {
+  const { verifyPlugin } = await verifier();
+  const f = await packageFixture(t);
+  const outside = join(f.root, 'outside-plugins');
+  await rename(join(f.packageRoot, 'plugins'), outside);
+  await symlink(outside, join(f.packageRoot, 'plugins'));
+  await assert.rejects(verifyPlugin(f), /directory|regular|symlink/i);
 });

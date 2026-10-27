@@ -3,7 +3,7 @@ import { lstat, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { parseJson, readApprovedSkills, readRegularTree, sha256, sourceGit } from './sync-plugin-skills.mjs';
+import { parseJson, readApprovedSkills, readRegularTree, sha256, sourceGit, verifyLocalReferences } from './sync-plugin-skills.mjs';
 
 export const DISTRIBUTION_REPOSITORY = 'https://github.com/trionlabs/agent-search-mcp-aigora';
 export const ENDPOINT = 'https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp';
@@ -110,12 +110,31 @@ function validatePriorReceipt(receipt, filePaths) {
   assert(payloadDigest(receipt.files) === receipt.payloadSha256, 'prior baseline receipt hash is inconsistent');
 }
 
+export async function verifyGuides({ packageRoot, pluginFiles }) {
+  const files = new Map([...pluginFiles].map(([path, bytes]) => ['plugins/aigora/' + path, bytes]));
+  files.set('README.md', await regularFile(packageRoot, 'README.md'));
+  for (const path of ['.github/README.md', 'PLUGIN.md']) {
+    const bytes = await regularFile(packageRoot, path);
+    const text = bytes.toString('utf8');
+    assert(!/^(?:\/plugin|codex plugin)\s+marketplace\s+(?:add|remove)\b/m.test(text), 'guide policy: keep installation commands in the authored reference');
+    files.set(path, bytes);
+  }
+  verifyLocalReferences(files, ['.github/README.md', 'PLUGIN.md']);
+  const entry = files.get('.github/README.md').toString('utf8');
+  const policy = files.get('PLUGIN.md').toString('utf8');
+  assert(entry.includes('../plugins/aigora/skills/aigora-mcp/references/install.md'), 'guide installation reference missing');
+  assert(policy.includes(DISTRIBUTION_REPOSITORY) && policy.includes('aigora@aigora') && policy.includes('trionlabs/aigora-skills'), 'guide source/identity missing');
+  assert(policy.includes('plugins/aigora/plugin.json') && policy.includes('plugins/aigora/.claude-plugin/plugin.json'), 'guide version references missing');
+}
+
 export async function verifyPlugin(input) {
   versionParts(input.expectedVersion);
   assert(compareVersions(input.expectedVersion, '0.2.0') >= 0, 'new-home plugin version below first release');
   const source = await readApprovedSkills(input);
   const packageRoot = resolve(input.packageRoot);
   await validateCatalogs(packageRoot);
+  // Check every parent before traversing the payload, including plugins itself.
+  await regularFile(packageRoot, 'plugins/aigora/plugin.json');
   const pluginFiles = await readRegularTree(join(packageRoot, 'plugins/aigora'));
   const expectedPaths = [...source.files.keys(), ...NATIVE_FILES, 'skills-source.json'].sort();
   matches([...pluginFiles.keys()].sort(), expectedPaths, 'plugin payload roster differs');
@@ -139,6 +158,7 @@ export async function verifyPlugin(input) {
     assert(order >= 0 && (order > 0 || payloadSha256 === prior.payloadSha256), 'changed payload requires a new version in this home');
   }
   const frozenNpm = await verifyFrozenNpmInputs(packageRoot);
+  await verifyGuides({ packageRoot, pluginFiles });
   return {
     schemaVersion: 1, distributionRepository: DISTRIBUTION_REPOSITORY, version: input.expectedVersion,
     sourceRepository: source.manifest.repository, sourceCommit: source.sourceCommit,
