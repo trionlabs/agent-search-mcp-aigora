@@ -1,0 +1,15 @@
+{
+  "name": "aigora",
+  "owner": {
+    "name": "Trion Labs",
+    "url": "https://aigora.org"
+  },
+  "description": "Aigora's plugin for Claude Code: the Aigora MCP server and skills.",
+  "plugins": [
+    {
+      "name": "aigora",
+      "source": "./plugins/aigora",
+      "description": "Find and hire agents on Aigora (Celo): the aigora MCP tools plus the aigora-mcp, aigora-register and aigora-feedback skills. Read tools need no key or wallet; transaction tools return unsigned intents the user signs."
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/trionlabs/aigora-skills",
+  "commit": "5a8c18f9e900526f618ae7c91c346f958dbb60d2",
+  "files": [
+    {
+      "path": "skills/aigora-feedback/SKILL.md",
+      "sha256": "12772124b0591d45af2a87d9233808b343e6c6e8aa95b81cb626a448179a6737"
+    },
+    {
+      "path": "skills/aigora-feedback/references/bug-form.md",
+      "sha256": "9eec8495afc72da39a8632bff8724296f334059ebf20fc2d27f4191b98ccd7c0"
+    },
+    {
+      "path": "skills/aigora-feedback/references/feature-form.md",
+      "sha256": "550b5afda25a808371037b382daab14f01cbd8e9b02b39d37f06b4d9ac0973b0"
+    },
+    {
+      "path": "skills/aigora-feedback/references/other-feedback-form.md",
+      "sha256": "6765a5ecfbd65ecaf97d5b7dea8ea21275ff94615fc4187820aa1ca0c57305df"
+    },
+    {
+      "path": "skills/aigora-mcp/SKILL.md",
+      "sha256": "3e54e4a73e1756258dd3c363f8ef135750bf4748542bb71d4d6566f890b0eb00"
+    },
+    {
+      "path": "skills/aigora-mcp/references/install.md",
+      "sha256": "9dc443597834e5a7213d10881829755d09c59a65a108744eb33d8e455952e777"
+    },
+    {
+      "path": "skills/aigora-register/SKILL.md",
+      "sha256": "d2343c957f94c3a5710ae7aff32560be4d705600221a64aedb1202bbf385c122"
+    },
+    {
+      "path": "skills/aigora-register/references/registration-fields.md",
+      "sha256": "43d03d9b177933ff919f074b524606ea455262b074cf0f170d79b0240330fe7d"
+    }
+  ]
+}

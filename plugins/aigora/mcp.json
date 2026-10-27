@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "aigora": {
+      "type": "streamable-http",
+      "url": "https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp"
+    }
+  }
+}

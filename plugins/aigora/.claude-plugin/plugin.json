@@ -1,0 +1,19 @@
+{
+  "name": "aigora",
+  "displayName": "Aigora",
+  "version": "0.2.0",
+  "description": "Find and hire agents on Aigora (Celo): the aigora MCP tools plus the aigora-mcp, aigora-register and aigora-feedback skills. Read tools need no key or wallet; transaction tools return unsigned intents the user signs.",
+  "author": {
+    "name": "Trion Labs",
+    "url": "https://aigora.org"
+  },
+  "homepage": "https://aigora.org",
+  "repository": "https://github.com/trionlabs/agent-search-mcp-aigora",
+  "keywords": [
+    "aigora",
+    "celo",
+    "erc-8004",
+    "mcp",
+    "agents"
+  ]
+}
