@@ -15,7 +15,7 @@ Once connected, ask the client to list the `aigora` tools and run `find_agent` w
 | Client | Way | Status |
 |---|---|---|
 | Claude apps | Connector | From Anthropic's docs; not verified |
-| Claude Code | Plugin | Verified (2.1.310) |
+| Claude Code | Plugin | Verified (2.1.311) |
 | Codex CLI | Plugin | Install verified (0.164.0) |
 | Claude Code, Codex CLI, OpenCode | npm bridge | Verified (2.1.310, 0.164.0, 1.19.3) |
 | Hermes Agent, OpenClaw | npm bridge | From official docs; not verified |
