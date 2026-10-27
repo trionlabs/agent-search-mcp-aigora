@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "https://github.com/trionlabs/aigora-skills",
-  "commit": "3128997987e8c679ae3f2bee9ee8680a4833becf",
+  "commit": "d2f491cc5152f7a9871b77b7fa4c497a164c99a2",
   "files": [
     {
       "path": "skills/aigora-feedback/SKILL.md",
@@ -21,7 +21,7 @@
     },
     {
       "path": "skills/aigora-mcp/SKILL.md",
-      "sha256": "0a687f9dd1f0a7656ce2761766b589c8b70fa559ee1478215c3c6f255f6eb384"
+      "sha256": "a959ce802af9657a4c270dd8721cbaac1051c07562bc091688d2349bab792aa4"
     },
     {
       "path": "skills/aigora-mcp/references/install.md",
