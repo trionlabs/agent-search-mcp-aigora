@@ -1,0 +1,20 @@
+{
+  "name": "aigora",
+  "interface": {
+    "displayName": "Aigora"
+  },
+  "plugins": [
+    {
+      "name": "aigora",
+      "source": {
+        "source": "local",
+        "path": "./plugins/aigora"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
