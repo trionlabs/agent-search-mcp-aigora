@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseJson, readApprovedSkills, readRegularTree, sha256, sourceGit, verifyLocalReferences } from './sync-plugin-skills.mjs';
 
 export const DISTRIBUTION_REPOSITORY = 'https://github.com/trionlabs/agent-search-mcp-aigora';
-export const ENDPOINT = 'https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp';
+export const ENDPOINT = 'https://mcp.aigora.org/mcp';
 const BRIDGE_BASE = '978e66196ce320211eba970a7d48e1a8ffe0ca61';
 const NATIVE_FILES = ['.claude-plugin/plugin.json', '.mcp.json', 'mcp.json', 'plugin.json'];
 const safeJson = parseJson;

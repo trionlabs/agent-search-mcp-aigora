@@ -201,6 +201,10 @@ async function packageFixture(t) {
       await writeFile(join(f.packageRoot, path), await readFile(join(ROOT, path)));
     }
   }
+  // The bootstrap fixture is this home's first release (0.2.0), whatever version the tree ships now.
+  for (const path of ['plugins/aigora/plugin.json', 'plugins/aigora/.claude-plugin/plugin.json']) {
+    await changeJson(f, path, (x) => { x.version = '0.2.0'; });
+  }
   await writeFile(join(f.sourceRepo, 'plugin.json'), '{"version":"0.1.2"}\n');
   await syncPluginSkills({ ...f, mode: 'write' });
   return { ...f, expectedVersion: '0.2.0', bootstrap: true, previousHomeReleaseReceipt: null };

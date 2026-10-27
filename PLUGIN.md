@@ -12,7 +12,7 @@ If your plugin came from trionlabs/aigora-skills, keep it and update it there. T
 
 A refresh follows your selected source; it does not replace that source. No automatic replacement or sunset is included in this release. A future explicit source-replacement path needs its own verified instructions; there is no one-line migration procedure here.
 
-Your optional Tier-1 settings and client permissions remain yours. The plugin embeds no shared key, runs no npm bridge or install hook, and does not change the MCP endpoint. It is not a sandbox or an enforced read-only channel: some tools can publish to IPFS before a wallet signature. Read the guide before approving a tool.
+Your optional Tier-1 settings and client permissions remain yours. The plugin embeds no shared key and runs no npm bridge or install hook. From 0.2.1 it connects to `https://mcp.aigora.org/mcp`. It is not a sandbox or an enforced read-only channel: some tools can publish to IPFS before a wallet signature. Read the guide before approving a tool.
 
 ## Client and release evidence
 

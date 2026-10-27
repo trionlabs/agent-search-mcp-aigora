@@ -8,15 +8,15 @@
 - Other clients and the npm bridge: Claude Code, Codex CLI, OpenCode, Hermes Agent, OpenClaw
 - Optional settings
 
-The Aigora MCP server is at `https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp`. Claude apps connect to it directly. Claude Code and Codex install the `aigora` plugin, which bundles these skills and connects by URL; nothing is installed or run locally. Other clients run the stdio bridge `npx -y @aigora/mcp@latest run`. Pick the user's client, add the entry, then reload MCP or restart the client. No API key is needed.
+The Aigora MCP server is at `https://mcp.aigora.org/mcp`. Claude apps connect to it directly. Claude Code and Codex install the `aigora` plugin, which bundles these skills and connects by URL; nothing is installed or run locally. Other clients run the stdio bridge `npx -y @aigora/mcp@latest run`. Pick the user's client, add the entry, then reload MCP or restart the client. No API key is needed.
 
 Once connected, ask the client to list the `aigora` tools and run `find_agent` with a short query.
 
 | Client | Way | Status |
 |---|---|---|
 | Claude apps | Connector | From Anthropic's docs; not verified |
-| Claude Code | Plugin | Verified (2.1.311) |
-| Codex CLI | Plugin | Install verified (0.164.0) |
+| Claude Code | Plugin | Verified (2.1.312) |
+| Codex CLI | Plugin | Install verified (0.165.0) |
 | Claude Code, Codex CLI, OpenCode | npm bridge | Verified (2.1.310, 0.164.0, 1.19.3) |
 | Hermes Agent, OpenClaw | npm bridge | From official docs; not verified |
 
@@ -27,7 +27,7 @@ Once connected, ask the client to list the `aigora` tools and run `find_agent` w
 In claude.ai, Claude Desktop or Cowork, open **Customize > Connectors**, add a custom connector, and enter:
 
 - Name: `Aigora`
-- URL: `https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp`
+- URL: `https://mcp.aigora.org/mcp`
 - Authentication: **No sign in**
 
 On Team and Enterprise plans, an owner adds the connector first. Leave the intent tools (`*_intent`, `refine_bounty_spec`) on "ask"; approve only the read tools if the app offers "Allow always".
@@ -43,7 +43,7 @@ Already installed the plugin from `trionlabs/aigora-skills`? Keep it and update 
 
 The plugin adds the `aigora` MCP server and the `aigora-mcp`, `aigora-register` and `aigora-feedback` skills. Its tools appear as `mcp__plugin_aigora_aigora__<tool>`. To update, run `/plugin marketplace update aigora`, then `/plugin update aigora@aigora`, and restart Claude Code.
 
-To connect without the plugin: `claude mcp add --transport http aigora https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp`.
+To connect without the plugin: `claude mcp add --transport http aigora https://mcp.aigora.org/mcp`.
 
 ## Codex CLI: plugin
 
@@ -56,7 +56,7 @@ codex plugin add aigora@aigora
 
 Start a new session afterwards. Codex runs the five read tools without asking, because the server marks them `readOnlyHint`; it still asks before the intent tools. To update, run `codex plugin marketplace upgrade`, then `codex plugin add aigora@aigora`, and start a new session.
 
-To connect without the plugin: `codex mcp add aigora --url https://aigora-prd-mcp-vfl5n4ujkq-ey.a.run.app/mcp`.
+To connect without the plugin: `codex mcp add aigora --url https://mcp.aigora.org/mcp`.
 
 ## Other clients and the npm bridge
 
