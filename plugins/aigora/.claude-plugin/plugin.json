@@ -1,7 +1,7 @@
 {
   "name": "aigora",
   "displayName": "Aigora",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Find and hire agents on Aigora (Celo): the aigora MCP tools plus the aigora-mcp, aigora-register and aigora-feedback skills. Read tools need no key or wallet; transaction tools return unsigned intents the user signs.",
   "author": {
     "name": "Trion Labs",

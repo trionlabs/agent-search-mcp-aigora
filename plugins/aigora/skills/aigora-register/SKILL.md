@@ -1,6 +1,6 @@
 ---
 name: aigora-register
-description: Use when a builder wants to register, list, edit or migrate an owned ERC-8004 agent through Aigora's web app, or obtain its public profile URL. For generic on-chain ERC-8004 or x402 work, use the Celo agent-skills; for Aigora feedback, use aigora-feedback.
+description: Use when a builder wants to register, list, edit or migrate an owned ERC-8004 agent through Aigora's web app, update it from the CLI with the update_agent_intent MCP tool, or obtain its public profile URL. For generic on-chain ERC-8004 or x402 work, use the Celo agent-skills; for Aigora feedback, use aigora-feedback.
 ---
 
 # Register or migrate your agent on Aigora
@@ -76,9 +76,20 @@ Canonical registry agents can be visible under **All** after indexing even if re
 
 For generic contract reads/writes or standalone x402 integration, use the [Celo agent-skills](https://github.com/celo-org/agent-skills) and [Celo ERC-8004 docs](https://docs.celo.org/build-on-celo/build-with-ai/8004). For runtime setup, consult the selected deployment's `/agent-operator-guide` if available. For an Aigora bug or feature request, use `aigora-feedback` to prepare a feedback pull request.
 
+## Update from the CLI
+
+An owner can update an existing agent without the browser through the aigora MCP tool `update_agent_intent`. The tool does not register new agents. It is available only where the deployed MCP server lists it; if `tools/list` lacks it, use web **Edit**.
+
+1. **Set up signing once.** In their own Terminal, the user imports the agent owner's key into an encrypted Foundry keystore: `cast wallet import <name> --interactive`. Never ask for, read or paste a private key, seed phrase or keystore password. The keystore address must be the agent's on-chain owner (`ownerOf`), not only its `agentWallet`.
+2. **Prepare the change.** Ask for the chain, agent ID, the owner's public address and the fields to change. The patch can change only `name`, `description`, `image`, `cover`, `services`, `skills`, `domains`, `categories` and `external_links`. An empty `image` or `cover` clears it. Skills and domains use the same fixed OASF lists as the form.
+3. **Call the tool.** Call `update_agent_intent` with `chain_id`, `agent_id`, `owner_wallet` and `patch`. The server reads the current metadata on-chain and stops if it cannot load it. It merges the patch with the Edit rules, so fields Aigora does not manage are kept. It then validates the result, pins the new JSON to public IPFS and returns one unsigned `setAgentURI`. Before the call, tell the user that the new metadata becomes public on IPFS. If the merged metadata declares x402, the server first checks each priced web endpoint's live x402 challenge without paying, as the web form does; on failure it returns `x402_preflight_failed` (or `x402_probe_unavailable`) and pins nothing. Each caller gets one pin per agent every 5 minutes.
+4. **Review.** Show `human_summary` and every entry in `changes` (before → after), plus `previous_uri` and `new_uri`. Get a clear yes.
+5. **Sign.** Replace `<KEYSTORE_NAME>` in `sign_command` with the keystore name the user gave. The user runs that one `cast send` line in their own Terminal and enters the keystore password there. Do not run it for them.
+6. **Verify.** Read `cast call <registry> "tokenURI(uint256)(string)" <agentId> --rpc-url <rpc>` and confirm it equals `new_uri`. Then open the chain-qualified profile URL as in step 6 of the web flow. Indexing can lag the transaction.
+
 ## Boundaries
 
-- Guide the user; wallet transactions and payment approvals stay in their wallet UI.
+- Guide the user; wallet transactions and payment approvals stay in their own wallet UI or Terminal.
 - Keep secrets and private endpoints out of public metadata and feedback.
 - Describe the observed deployment and form. Source support does not establish that a feature is already live there.
-- This skill documents the web flow, not a programmatic bulk-registration API.
+- This skill documents the web flow and the single-agent CLI update. It is not a bulk-registration API.
